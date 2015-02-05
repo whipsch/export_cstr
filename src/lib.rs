@@ -10,6 +10,7 @@ use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::codemap::Span;
 use syntax::ast;
+use syntax::ast::Visibility;
 use syntax::ast::ItemStatic;
 use syntax::ast::Sign::Plus;
 use syntax::ast::Mutability::MutImmutable;
@@ -85,7 +86,16 @@ fn expand_declare_static_raw_cstr<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[as
 
             // make the actual item
             let attrs = vec![cx.attribute(sp, cx.meta_word(sp, token::intern_and_get_ident("no_mangle")))];
-            let item = cx.item(sp, cx.ident_of(name), attrs, ast::ItemStatic(ty, MutImmutable, rhs));
+
+            // XXX: have to manually construct the item here because we can't set the visibility otherwise.
+            let item = P(ast::Item {
+              ident: cx.ident_of(name),
+              attrs: attrs,
+              id: ast::DUMMY_NODE_ID,
+              node: ast::ItemStatic(ty, MutImmutable, rhs),
+              vis: Visibility::Public,
+              span: sp
+            });
             base::MacItems::new(vec![item].into_iter())
         }
         (_, _, rest) => {
@@ -105,7 +115,7 @@ fn expand_declare_static_raw_cstr<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[as
 #[macro_export]
 macro_rules! export_cstr {
     ($name:ident, $lit:expr) => (
-        pub declare_static_raw_cstr!(stringify!($name), $lit);
+        declare_static_raw_cstr!(stringify!($name), $lit);
     );
 }
 
