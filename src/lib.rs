@@ -10,11 +10,13 @@ use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::codemap::Span;
 use syntax::ast;
+use syntax::ast::ItemStatic;
 use syntax::ast::Sign::Plus;
 use syntax::ast::Mutability::MutImmutable;
 use syntax::ast::Lit_::{LitChar, LitInt};
 use syntax::ast::Ty_::TyFixedLengthVec;
 use syntax::ast::LitIntType::UnsuffixedIntLit;
+use syntax::parse::token;
 
 
 /// Construct a `ast::Ty_::TyPath` corresponding to `path`
@@ -82,7 +84,8 @@ fn expand_declare_static_raw_cstr<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[as
             let ty = cx.ty(sp, TyFixedLengthVec(path, cx.expr_lit(sp, LitInt(lit.len() as u64, UnsuffixedIntLit(Plus)))));
 
             // make the actual item
-            let item = cx.item_static(sp, cx.ident_of(name), ty, MutImmutable, rhs);
+            let attrs = vec![cx.attribute(sp, cx.meta_word(sp, token::intern_and_get_ident("no_mangle")))];
+            let item = cx.item(sp, cx.ident_of(name), attrs, ast::ItemStatic(ty, MutImmutable, rhs));
             base::MacItems::new(vec![item].into_iter())
         }
         (_, _, rest) => {
@@ -102,7 +105,7 @@ fn expand_declare_static_raw_cstr<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[as
 #[macro_export]
 macro_rules! export_cstr {
     ($name:ident, $lit:expr) => (
-        #[no_mangle] pub declare_static_raw_cstr!(stringify!($name), $lit);
+        pub declare_static_raw_cstr!(stringify!($name), $lit);
     );
 }
 
