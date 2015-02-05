@@ -1,8 +1,10 @@
 [package]
-
 name = "export_cstr"
 version = "0.0.1"
 authors = ["Will Hipschman <whipsch@gmail.com>"]
+description = "Provides a macro for exporting constant, null-terminated, C strings from dynamic libraries"
+license = "MIT"
+repository = "https://github.com/whipsch/export_cstr"
 
 [lib]
 name = "export_cstr"
