@@ -125,7 +125,10 @@ fn expand_declare_static_raw_cstr<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[as
 /// The resulting item is a raw, null-terminated C string that becomes exported as an unmangled
 /// symbol for use in dynamic libraries.
 ///
-/// `export_cstr!(foo, "hello")` expands to `#[no_mangle] pub static foo: [libc::c_char; 6] = ['h' as libc::c_char, ..., 0 as libc::c_char];`
+/// `export_cstr!(foo, "hello")` expands to:
+///
+/// `#[no_mangle] #[allow(dead_code, non_upper_case_globals)]
+/// pub static foo: [libc::c_char; 6] = ['h' as libc::c_char, ..., 0 as libc::c_char];`
 #[macro_export]
 macro_rules! export_cstr {
     ($name:ident, $lit:expr) => (
