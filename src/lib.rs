@@ -14,7 +14,7 @@ use syntax::ast::Visibility;
 use syntax::ast::ItemStatic;
 use syntax::ast::Sign::Plus;
 use syntax::ast::Mutability::MutImmutable;
-use syntax::ast::Lit_::{LitChar, LitInt};
+use syntax::ast::Lit_::{LitChar, LitInt, LitStr};
 use syntax::ast::Ty_::TyFixedLengthVec;
 use syntax::ast::LitIntType::UnsuffixedIntLit;
 use syntax::parse::token;
@@ -84,17 +84,26 @@ fn expand_declare_static_raw_cstr<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[as
             let path = make_ty_path(cx, sp, vec!["libc", "c_char"]);
             let ty = cx.ty(sp, TyFixedLengthVec(path, cx.expr_lit(sp, LitInt(lit.len() as u64, UnsuffixedIntLit(Plus)))));
 
-            // make the actual item
-            let attrs = vec![cx.attribute(sp, cx.meta_word(sp, token::intern_and_get_ident("no_mangle")))];
+            // #[no_mangle] #[allow(dead_code, non_upper_case_globals)]
+            let attrs = vec![
+                cx.attribute(sp, cx.meta_word(sp, token::intern_and_get_ident("no_mangle"))),
+                cx.attribute(sp,
+                    cx.meta_list(sp,
+                        token::intern_and_get_ident("allow"),
+                        vec![
+                            cx.meta_word(sp, token::intern_and_get_ident("dead_code")),
+                            cx.meta_word(sp, token::intern_and_get_ident("non_upper_case_globals"))
+                        ]))
+            ];
 
             // XXX: have to manually construct the item here because we can't set the visibility otherwise.
             let item = P(ast::Item {
-              ident: cx.ident_of(name),
-              attrs: attrs,
-              id: ast::DUMMY_NODE_ID,
-              node: ast::ItemStatic(ty, MutImmutable, rhs),
-              vis: Visibility::Public,
-              span: sp
+                ident: cx.ident_of(name),
+                attrs: attrs,
+                id: ast::DUMMY_NODE_ID,
+                node: ast::ItemStatic(ty, MutImmutable, rhs),
+                vis: Visibility::Public,
+                span: sp
             });
             base::MacItems::new(vec![item].into_iter())
         }
