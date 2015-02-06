@@ -47,6 +47,17 @@ fn extract_literal<'cx, 'a>(cx: &'cx mut ExtCtxt, expr: &'a P<ast::Expr>) -> Opt
     }
 }
 
+/// Construct an attribute #[foo]
+fn make_attr_word<'cx>(cx: &'cx mut ExtCtxt, sp: Span, name: &str) -> ast::Attribute {
+    cx.attribute(sp, cx.meta_word(sp, token::intern_and_get_ident(name)))
+}
+
+/// Construct an attribute #[foo(bar)] or #[baz(biff, quux, ...)]
+fn make_attr_list<'cx>(cx: &'cx mut ExtCtxt, sp: Span, name: &str, list: Vec<&str>) -> ast::Attribute { 
+   let words = list.iter().map(|w| { cx.meta_word(sp, token::intern_and_get_ident(w)) }).collect::<Vec<_>>();
+   cx.attribute(sp, cx.meta_list(sp, token::intern_and_get_ident(name), words))
+}
+
 /// Expansion for `declare_static_raw_cstr!`
 /// `declare_static_raw_cstr!("foo", "hello")` -> `static foo: [libc::c_char; 6] = ['h' as libc::c_char, ..., 0 as libc::c_char];`
 fn expand_declare_static_raw_cstr<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
@@ -86,14 +97,8 @@ fn expand_declare_static_raw_cstr<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[as
 
             // #[no_mangle] #[allow(dead_code, non_upper_case_globals)]
             let attrs = vec![
-                cx.attribute(sp, cx.meta_word(sp, token::intern_and_get_ident("no_mangle"))),
-                cx.attribute(sp,
-                    cx.meta_list(sp,
-                        token::intern_and_get_ident("allow"),
-                        vec![
-                            cx.meta_word(sp, token::intern_and_get_ident("dead_code")),
-                            cx.meta_word(sp, token::intern_and_get_ident("non_upper_case_globals"))
-                        ]))
+                make_attr_word(cx, sp, "no_mangle"),
+                make_attr_list(cx, sp, "allow", vec!["dead_code", "non_upper_case_globals"])
             ];
 
             // XXX: have to manually construct the item here because we can't set the visibility otherwise.
