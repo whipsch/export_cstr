@@ -20,15 +20,9 @@ use syntax::ast::LitIntType::UnsuffixedIntLit;
 use syntax::parse::token;
 
 
-/// Construct a `ast::Ty_::TyPath` corresponding to `path`
-fn make_ty_path<'cx>(cx: &'cx mut ExtCtxt, sp: Span, path: Vec<&str>) -> P<ast::Ty> {
-    let path = path.iter().map(|p| { cx.ident_of(p) }).collect::<Vec<_>>();
-    cx.ty_path(cx.path(sp, path))
-}
-
-/// Generate an `ast::Expr` for `'a' as libc::c_char`
+/// Generate an `ast::Expr` for `'a' as i8`
 fn make_char_cast<'cx>(cx: &'cx mut ExtCtxt, sp: Span, c: char) -> P<ast::Expr> {
-    let path = make_ty_path(cx, sp, vec!["libc", "c_char"]);
+    let path = cx.ty_path(cx.path_ident(sp, cx.ident_of("i8")));
     cx.expr_cast(sp, cx.expr_lit(sp, LitChar(c)), path)
 }
 
@@ -59,7 +53,10 @@ fn make_attr_list<'cx>(cx: &'cx mut ExtCtxt, sp: Span, name: &str, list: Vec<&st
 }
 
 /// Expansion for `declare_static_raw_cstr!`
-/// `declare_static_raw_cstr!("foo", "hello")` -> `static foo: [libc::c_char; 6] = ['h' as libc::c_char, ..., 0 as libc::c_char];`
+/// `declare_static_raw_cstr!("foo", "hello")` expands to:
+///
+/// `#[no_mangle] #[allow(dead_code, non_upper_case_globals)]
+/// pub static foo: [i8; 6] = ['h' as i8, 'e' as i8, ..., 0 as i8];`
 fn expand_declare_static_raw_cstr<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                                      -> Box<base::MacResult + 'cx> {
     let exprs = match base::get_exprs_from_tts(cx, sp, tts) {
@@ -91,8 +88,8 @@ fn expand_declare_static_raw_cstr<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[as
             let rhs = lit.as_slice().chars().map(|c| { make_char_cast(cx, sp, c) }).collect::<Vec<_>>();
             let rhs = cx.expr_vec(sp, rhs);
 
-            // the type of the item is a fixed length vector of libc::c_char
-            let path = make_ty_path(cx, sp, vec!["libc", "c_char"]);
+            // the type of the item is a fixed length vector of i8
+            let path = cx.ty_path(cx.path_ident(sp, cx.ident_of("i8")));
             let ty = cx.ty(sp, TyFixedLengthVec(path, cx.expr_lit(sp, LitInt(lit.len() as u64, UnsuffixedIntLit(Plus)))));
 
             // #[no_mangle] #[allow(dead_code, non_upper_case_globals)]
@@ -121,14 +118,14 @@ fn expand_declare_static_raw_cstr<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[as
     }
 }
 
-/// Declare a `pub static [libc::c_char; N]`, where N is the length of the supplied string, plus 1.
+/// Declare a `pub static [i8; N]`, where N is the length of the supplied string, plus 1.
 /// The resulting item is a raw, null-terminated C string that becomes exported as an unmangled
 /// symbol for use in dynamic libraries.
 ///
 /// `export_cstr!(foo, "hello")` expands to:
 ///
 /// `#[no_mangle] #[allow(dead_code, non_upper_case_globals)]
-/// pub static foo: [libc::c_char; 6] = ['h' as libc::c_char, ..., 0 as libc::c_char];`
+/// pub static foo: [i8; 6] = ['h' as i8, 'e' as i8', ..., 0 as i8];`
 #[macro_export]
 macro_rules! export_cstr {
     ($name:ident, $lit:expr) => (
