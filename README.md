@@ -14,13 +14,11 @@ export_cstr = "*"
 lib.rs:
 
 ```rust
-#![feature(plugin, libc)]
+#![feature(plugin)]
 #[plugin] #[macro_use] extern crate export_cstr;
 
-extern crate libc;
-use libc::c_char;
-
-export_cstr!(FOO, "this becomes an exported symbol 'FOO' which points to a constant, null-terminated, C string");
+// implicit #[allow(dead_code, non_upper_case_globals)]
+export_cstr!(foo, "this becomes an exported symbol 'foo' which points to a constant, null-terminated, C string");
 
 // ...
 ```
