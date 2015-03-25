@@ -1,3 +1,9 @@
+# This crate is no longer useful.
+See [PR #18480](https://github.com/rust-lang/rust/pull/18480)
+
+---
+
+
 ### Example usage
 
 Cargo.toml:
